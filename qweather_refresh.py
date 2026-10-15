@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 import os
 import sys
@@ -58,7 +59,10 @@ class QWeather:
         self.calls += 1
         try:
             with urlopen(request, timeout=20) as response:
-                payload = json.load(response)
+                body = response.read()
+                if response.headers.get("Content-Encoding", "").lower() == "gzip":
+                    body = gzip.decompress(body)
+                payload = json.loads(body.decode("utf-8"))
         except HTTPError as exc:
             if exc.code in (401, 403):
                 raise SystemExit(
