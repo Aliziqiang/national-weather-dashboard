@@ -4,6 +4,12 @@ on:
     - cron: "30 0 * * *" # 08:30 Asia/Shanghai
     - cron: "0 9 * * *"  # 17:00 Asia/Shanghai
   workflow_dispatch:
+    inputs:
+      publish_only:
+        description: "仅发布页面，不请求天气数据"
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: write
   pages: write
@@ -21,10 +27,12 @@ jobs:
       - name: Check out site
         uses: actions/checkout@v4
       - name: Set up Python
+        if: ${{ !inputs.publish_only }}
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Verify QWeather credentials before batch requests
+        if: ${{ !inputs.publish_only }}
         env:
           QWEATHER_API_HOST: ${{ vars.QWEATHER_API_HOST }}
           QWEATHER_API_KEY: ${{ secrets.QWEATHER_API_KEY }}
@@ -36,11 +44,13 @@ jobs:
           print("QWeather authentication succeeded")
           PY
       - name: Fetch QWeather snapshot
+        if: ${{ !inputs.publish_only }}
         env:
           QWEATHER_API_HOST: ${{ vars.QWEATHER_API_HOST }}
           QWEATHER_API_KEY: ${{ secrets.QWEATHER_API_KEY }}
         run: python qweather_refresh.py
       - name: Persist latest snapshot for the next scheduled run
+        if: ${{ !inputs.publish_only }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
