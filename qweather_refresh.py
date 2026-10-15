@@ -15,9 +15,6 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
-import jwt
-
-
 ROOT = Path(__file__).resolve().parent
 CITY_FILE = ROOT / "cities.json"
 DATA_FILE = ROOT / "weather-data.json"
@@ -39,23 +36,10 @@ def required(name: str) -> str:
     return value
 
 
-def create_token() -> str:
-    key = required("QWEATHER_PRIVATE_KEY").replace("\\n", "\n")
-    now = int(time.time())
-    payload = {
-        "iss": required("QWEATHER_ISS"),
-        "sub": required("QWEATHER_SUB"),
-        "iat": now - 30,
-        "exp": now + 900,
-    }
-    headers = {"kid": required("QWEATHER_KID"), "alg": "EdDSA"}
-    return jwt.encode(payload, key, algorithm="EdDSA", headers=headers)
-
-
 class QWeather:
-    def __init__(self, host: str, token: str, request_budget: int) -> None:
+    def __init__(self, host: str, api_key: str, request_budget: int) -> None:
         self.host = host.removeprefix("https://").removeprefix("http://").strip("/")
-        self.token = token
+        self.api_key = api_key
         self.request_budget = max(0, request_budget)
         self.last_call = 0.0
         self.calls = 0
@@ -69,13 +53,19 @@ class QWeather:
         url = f"https://{self.host}{path}"
         if params:
             url += "?" + urlencode(params)
-        request = Request(url, headers={"Authorization": f"Bearer {self.token}", "Accept": "application/json"})
+        request = Request(url, headers={"X-QW-Api-Key": self.api_key, "Accept": "application/json"})
         self.last_call = time.monotonic()
         self.calls += 1
         try:
             with urlopen(request, timeout=20) as response:
                 payload = json.load(response)
-        except (HTTPError, URLError, TimeoutError) as exc:
+        except HTTPError as exc:
+            if exc.code in (401, 403):
+                raise SystemExit(
+                    f"QWeather rejected the request (HTTP {exc.code}); stopping before publishing data"
+                ) from exc
+            raise RuntimeError(f"QWeather request failed: {exc.code} {exc}") from exc
+        except (URLError, TimeoutError) as exc:
             raise RuntimeError(f"QWeather request failed: {getattr(exc, 'code', '')} {exc}") from exc
         return payload
 
@@ -96,7 +86,6 @@ def nested_number(obj: Any, key: str) -> float | None:
 def get_current(api: QWeather, city: dict[str, Any]) -> dict[str, Any]:
     lat, lon = f"{city['lat']:.2f}", f"{city['lon']:.2f}"
     raw = api.get(f"/weather/v1/current/{lat}/{lon}", {"localTime": "true", "lang": "zh"})
-    # Accept both current v1 and the older v7 object shape while accounts migrate.
     current = value(raw, "now", raw)
     condition = value(raw, "condition", {})
     temp = nested_number(raw, "temperature")
@@ -124,8 +113,6 @@ def normalize_days(raw: dict[str, Any]) -> list[dict[str, Any]]:
         precip_day = value(daypart, "precipitation", {})
         precip_night = value(nightpart, "precipitation", {})
         precip = value(row, "precipitation", {})
-
-        # v1 probabilities use 0-1; v7 uses 0-100 in the "pop" field.
         probabilities = [value(precip, "probability"), value(precip_day, "probability"), value(precip_night, "probability")]
         probabilities = [x for x in probabilities if x is not None]
         if not probabilities:
@@ -138,7 +125,6 @@ def normalize_days(raw: dict[str, Any]) -> list[dict[str, Any]]:
             except (TypeError, ValueError):
                 pass
         probability = max(normalized, default=0)
-
         amount = nested_number(precip, "amount")
         if amount is None:
             amount = (nested_number(precip_day, "amount") or 0) + (nested_number(precip_night, "amount") or 0)
@@ -190,24 +176,17 @@ def rain_rank(city_name: str, record: dict[str, Any]) -> tuple[float, float, int
 def main() -> int:
     cities = json.loads(CITY_FILE.read_text(encoding="utf-8"))
     now = datetime.now(TZ)
-    # 00:30 UTC is 08:30 Beijing time. A manual run follows the same local-time rule.
     morning = now.hour < 12
     old = load_json(DATA_FILE, {"updatedAt": None, "cities": {}})
     records: dict[str, Any] = old.get("cities", {})
     today_index = now.timetuple().tm_yday
-
-    # Rotate two disjoint groups of 28 cities. Each city still gets current weather
-    # at least once each day; the other 310 get the scheduled morning and evening refresh.
     skip_start = ((today_index - 1) * 56) % len(cities)
     offset = 0 if morning else 28
     skipped = {(skip_start + offset + i) % len(cities) for i in range(28)}
     current_targets = [city for i, city in enumerate(cities) if i not in skipped]
-
-    token = create_token()
     prior_calls = old.get("requestsToday", 0) if old.get("requestDate") == now.date().isoformat() else 0
-    api = QWeather(required("QWEATHER_API_HOST"), token, MAX_DAILY_CALLS - int(prior_calls or 0))
+    api = QWeather(required("QWEATHER_API_HOST"), required("QWEATHER_API_KEY"), MAX_DAILY_CALLS - int(prior_calls or 0))
     errors = 0
-
     daily_targets = cities if morning else [city for city in cities if not (records.get(city["name"]) or {}).get("daily")]
     for city in daily_targets:
         record = records.setdefault(city["name"], {})
@@ -216,10 +195,9 @@ def main() -> int:
             record["forecastUpdatedAt"] = datetime.now(TZ).isoformat(timespec="seconds")
         except BudgetExhausted:
             break
-        except Exception as exc:  # keep last good value for a transient city-level error
+        except Exception as exc:
             errors += 1
             print(f"Daily forecast unavailable for {city['name']}: {exc}", file=sys.stderr)
-
     for city in current_targets:
         record = records.setdefault(city["name"], {})
         try:
@@ -229,9 +207,6 @@ def main() -> int:
         except Exception as exc:
             errors += 1
             print(f"Current weather unavailable for {city['name']}: {exc}", file=sys.stderr)
-
-    # Minute precipitation is short-lived and useful mainly for cities with the
-    # strongest rain signal. Limit it to 11 cities per refresh to stay under quota.
     candidates = sorted(cities, key=lambda city: rain_rank(city["name"], records.get(city["name"], {})), reverse=True)
     minute_success = 0
     for city in candidates[:MINUTELY_PER_RUN]:
@@ -245,7 +220,6 @@ def main() -> int:
         except Exception as exc:
             errors += 1
             print(f"Minute precipitation unavailable for {city['name']}: {exc}", file=sys.stderr)
-
     snapshot = {
         "source": "QWeather",
         "updatedAt": datetime.now(TZ).isoformat(timespec="seconds"),
