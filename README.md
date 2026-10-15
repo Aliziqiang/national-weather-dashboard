@@ -1,26 +1,21 @@
 # 全国天气看板（和风天气版）
 
-此目录作为 GitHub Pages 仓库根目录使用，包含全国 338 城市页面、QWeather 定时拉取脚本和 GitHub Actions 发布流程。网页只读取 `weather-data.json`，JWT 私钥仅由 GitHub Actions Secret 使用，不会下发到浏览器。
+此仓库提供全国 338 个城市的天气看板。网页仅读取 GitHub Actions 生成的 `weather-data.json` 快照，不直接请求天气接口，也不会公开 API Key。
 
-## 自动更新和免费额度
+## 自动更新
 
-- GitHub Actions 按北京时间每天 08:30 和 17:00 执行。
-- 逐天预报每天早上拉取一次，实况天气早晚更新，分钟级降水每次挑选降雨信号最强的 11 个城市。
-- 在免费额度内，脚本按每天约 980 次请求规划，并按免费 QPM 限制控制请求速度。当前天气为兼顾额度会轮换少数城市的其中一次更新；每个城市每天至少更新一次。
-- 页面显示接口实际返回的预报天数。免费套餐是否返回 3 天或 7 天以和风控制台及接口响应为准，不能显示 16 天；分钟级降水仅覆盖中国，时效为未来 2 小时。
-- 天气页面需要展示和风天气归属说明，页脚已有来源链接。
+- 每天北京时间 08:30、17:00 运行 GitHub Actions。
+- 实况天气早晚更新；逐天预报每天早上更新；分钟降水每次更新重点城市。
+- 脚本按每天约 980 次 API 请求规划，并控制请求频率。受免费额度限制，少数城市的实况在其中一次运行轮换跳过，每个城市每天至少更新一次。
+- 逐天预报显示接口实际返回的天数，具体范围取决于和风天气凭据权限；分钟降水是未来 2 小时临近预报。
 
-## GitHub 仓库配置
+## GitHub 配置
 
-1. 将本目录内的所有文件（包括隐藏目录 `.github`）上传到天气看板仓库根目录，保留 `index.html`、`cities.json`、`qweather_refresh.py`、`requirements.txt`、`weather-data.json` 和 `.github/workflows/qweather-pages.yml`。
-2. 在仓库 **Settings → Secrets and variables → Actions** 中添加 Repository variables：
-   - `QWEATHER_API_HOST`：`je2r72q662.re.qweatherapi.com`
-   - `QWEATHER_KID`：凭据 ID `KJGUK27CAX`
-   - `QWEATHER_SUB`：项目 ID `2KDX55UMBB`
-   - `QWEATHER_ISS`：控制台“设置”页里的开发者 ID（Q 开头）
-3. 在同一页面的 **Secrets** 中添加 `QWEATHER_PRIVATE_KEY`，值为该 JWT 凭据对应的完整 PEM 私钥内容。私钥不要提交进仓库，也不要粘贴到公开网页或聊天中。
-4. 在 **Settings → Pages → Build and deployment** 把 Source 设为 **GitHub Actions**。
-5. 在 **Settings → Actions → General → Workflow permissions** 允许工作流读写仓库内容。
-6. 打开 **Actions → Refresh QWeather data and publish Pages → Run workflow**。运行成功后页面会发布；之后工作流按计划自动更新。
+在 **Settings → Secrets and variables → Actions** 配置：
 
-如果当前和风凭据的 API 限制启用了“指定数据”，请确保至少允许实况天气、天气预报、分钟降水。脚本只调用这三类数据。
+- Repository variable：`QWEATHER_API_HOST`，值为和风天气控制台提供的专属 API Host。
+- Repository secret：`QWEATHER_API_KEY`，值为控制台生成的 API Key。请勿提交到仓库或网页代码。
+
+Pages 的发布来源应设为 **GitHub Actions**。配置完成后，进入 **Actions → Refresh QWeather data and publish Pages → Run workflow** 手动运行一次；之后按计划自动更新。
+
+如果凭据启用了 API 限制，请确保允许实况天气、天气预报和分钟降水。页面页脚包含和风天气归属链接。
