@@ -1,20 +1,16 @@
 name: Refresh QWeather data and publish Pages
-
 on:
   schedule:
     - cron: "30 0 * * *" # 08:30 Asia/Shanghai
     - cron: "0 9 * * *"  # 17:00 Asia/Shanghai
   workflow_dispatch:
-
 permissions:
   contents: write
   pages: write
   id-token: write
-
 concurrency:
   group: qweather-pages
   cancel-in-progress: false
-
 jobs:
   refresh-and-publish:
     runs-on: ubuntu-latest
@@ -24,39 +20,26 @@ jobs:
     steps:
       - name: Check out site
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install JWT dependency
-        run: pip install -r requirements.txt
-
       - name: Verify QWeather credentials before batch requests
         env:
           QWEATHER_API_HOST: ${{ vars.QWEATHER_API_HOST }}
-          QWEATHER_KID: ${{ vars.QWEATHER_KID }}
-          QWEATHER_ISS: ${{ vars.QWEATHER_ISS }}
-          QWEATHER_SUB: ${{ vars.QWEATHER_SUB }}
-          QWEATHER_PRIVATE_KEY: ${{ secrets.QWEATHER_PRIVATE_KEY }}
+          QWEATHER_API_KEY: ${{ secrets.QWEATHER_API_KEY }}
         run: |
           python - <<'PY'
           import qweather_refresh as q
-          api = q.QWeather(q.required("QWEATHER_API_HOST"), q.create_token(), 1)
+          api = q.QWeather(q.required("QWEATHER_API_HOST"), q.required("QWEATHER_API_KEY"), 1)
           api.get("/weather/v1/current/39.92/116.41", {"lang": "zh"})
           print("QWeather authentication succeeded")
           PY
-
       - name: Fetch QWeather snapshot
         env:
           QWEATHER_API_HOST: ${{ vars.QWEATHER_API_HOST }}
-          QWEATHER_KID: ${{ vars.QWEATHER_KID }}
-          QWEATHER_ISS: ${{ vars.QWEATHER_ISS }}
-          QWEATHER_SUB: ${{ vars.QWEATHER_SUB }}
-          QWEATHER_PRIVATE_KEY: ${{ secrets.QWEATHER_PRIVATE_KEY }}
+          QWEATHER_API_KEY: ${{ secrets.QWEATHER_API_KEY }}
         run: python qweather_refresh.py
-
       - name: Persist latest snapshot for the next scheduled run
         run: |
           git config user.name "github-actions[bot]"
@@ -66,15 +49,12 @@ jobs:
             git commit -m "Refresh QWeather snapshot"
             git push
           fi
-
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
