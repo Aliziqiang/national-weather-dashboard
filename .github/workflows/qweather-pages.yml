@@ -2,7 +2,7 @@ name: Refresh QWeather data and publish Pages
 on:
   schedule:
     - cron: "30 0 * * *" # 08:30 Asia/Shanghai
-    - cron: "0 9 * * *"  # 17:00 Asia/Shanghai
+    - cron: "10 9 * * *" # 17:10 Asia/Shanghai
   workflow_dispatch:
     inputs:
       publish_only:
