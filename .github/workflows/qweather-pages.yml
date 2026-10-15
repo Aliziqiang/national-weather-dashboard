@@ -33,6 +33,21 @@ jobs:
       - name: Install JWT dependency
         run: pip install -r requirements.txt
 
+      - name: Verify QWeather credentials before batch requests
+        env:
+          QWEATHER_API_HOST: ${{ vars.QWEATHER_API_HOST }}
+          QWEATHER_KID: ${{ vars.QWEATHER_KID }}
+          QWEATHER_ISS: ${{ vars.QWEATHER_ISS }}
+          QWEATHER_SUB: ${{ vars.QWEATHER_SUB }}
+          QWEATHER_PRIVATE_KEY: ${{ secrets.QWEATHER_PRIVATE_KEY }}
+        run: |
+          python - <<'PY'
+          import qweather_refresh as q
+          api = q.QWeather(q.required("QWEATHER_API_HOST"), q.create_token(), 1)
+          api.get("/weather/v1/current/39.92/116.41", {"lang": "zh"})
+          print("QWeather authentication succeeded")
+          PY
+
       - name: Fetch QWeather snapshot
         env:
           QWEATHER_API_HOST: ${{ vars.QWEATHER_API_HOST }}
