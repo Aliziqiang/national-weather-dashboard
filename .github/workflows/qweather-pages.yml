@@ -2,7 +2,11 @@ name: Refresh QWeather data and publish Pages
 on:
   schedule:
     - cron: "30 0 * * *" # 08:30 Asia/Shanghai
+    - cron: "45 0 * * *" # 08:45 Asia/Shanghai fallback
+    - cron: "15 1 * * *" # 09:15 Asia/Shanghai fallback
     - cron: "10 9 * * *" # 17:10 Asia/Shanghai
+    - cron: "25 9 * * *" # 17:25 Asia/Shanghai fallback
+    - cron: "45 9 * * *" # 17:45 Asia/Shanghai fallback
   workflow_dispatch:
     inputs:
       publish_only:
@@ -31,8 +35,34 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Skip a scheduled fallback if this slot already refreshed
+        id: retry_guard
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+
+          morning_schedules = {"30 0 * * *", "45 0 * * *", "15 1 * * *"}
+          schedule = os.environ["SCHEDULE"]
+          slot = "morning" if schedule in morning_schedules else "evening"
+          data = json.loads(Path("weather-data.json").read_text(encoding="utf-8"))
+          now = datetime.now(ZoneInfo("Asia/Shanghai"))
+          already_refreshed = (
+              data.get("requestDate") == now.date().isoformat()
+              and data.get("mode") == slot
+          )
+          print(f"Scheduled slot: {slot}; already refreshed: {already_refreshed}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"skip={'true' if already_refreshed else 'false'}\n")
+          PY
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
       - name: Verify QWeather credentials before batch requests
-        if: ${{ !inputs.publish_only }}
+        if: ${{ !inputs.publish_only && (github.event_name != 'schedule' || steps.retry_guard.outputs.skip != 'true') }}
         env:
           QWEATHER_API_HOST: ${{ vars.QWEATHER_API_HOST }}
           QWEATHER_API_KEY: ${{ secrets.QWEATHER_API_KEY }}
@@ -44,13 +74,14 @@ jobs:
           print("QWeather authentication succeeded")
           PY
       - name: Fetch QWeather snapshot
-        if: ${{ !inputs.publish_only }}
+        if: ${{ !inputs.publish_only && (github.event_name != 'schedule' || steps.retry_guard.outputs.skip != 'true') }}
         env:
           QWEATHER_API_HOST: ${{ vars.QWEATHER_API_HOST }}
           QWEATHER_API_KEY: ${{ secrets.QWEATHER_API_KEY }}
+          QWEATHER_RUN_MODE: ${{ github.event_name == 'schedule' && (github.event.schedule == '30 0 * * *' || github.event.schedule == '45 0 * * *' || github.event.schedule == '15 1 * * *') && 'morning' || github.event_name == 'schedule' && 'evening' || '' }}
         run: python qweather_refresh.py
       - name: Persist latest snapshot for the next scheduled run
-        if: ${{ !inputs.publish_only }}
+        if: ${{ !inputs.publish_only && (github.event_name != 'schedule' || steps.retry_guard.outputs.skip != 'true') }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
