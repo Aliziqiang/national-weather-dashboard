@@ -186,8 +186,10 @@ def rain_rank(city_name: str, record: dict[str, Any]) -> tuple[float, float, int
 def main() -> int:
     cities = json.loads(CITY_FILE.read_text(encoding="utf-8"))
     now = datetime.now(TZ)
-    # 00:30 UTC is 08:30 Beijing time. A manual run follows the same local-time rule.
-    morning = now.hour < 12
+    # Scheduled runs use their intended slot even if GitHub starts them late.
+    # Manual runs retain the local-time behavior.
+    run_mode = os.environ.get("QWEATHER_RUN_MODE", "").strip().lower()
+    morning = run_mode == "morning" if run_mode in {"morning", "evening"} else now.hour < 12
     old = load_json(DATA_FILE, {"updatedAt": None, "cities": {}})
     records: dict[str, Any] = old.get("cities", {})
     yesterday = (now.date() - timedelta(days=1)).isoformat()
