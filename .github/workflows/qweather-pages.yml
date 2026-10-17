@@ -42,7 +42,7 @@ jobs:
           python - <<'PY'
           import json
           import os
-          from datetime import datetime
+          from datetime import datetime, time
           from pathlib import Path
           from zoneinfo import ZoneInfo
 
@@ -51,11 +51,20 @@ jobs:
           slot = "morning" if schedule in morning_schedules else "evening"
           data = json.loads(Path("weather-data.json").read_text(encoding="utf-8"))
           now = datetime.now(ZoneInfo("Asia/Shanghai"))
-          already_refreshed = (
-              data.get("requestDate") == now.date().isoformat()
-              and data.get("mode") == slot
+          slot_start = datetime.combine(
+              now.date(), time(8, 30) if slot == "morning" else time(17, 10),
+              tzinfo=ZoneInfo("Asia/Shanghai"),
           )
-          print(f"Scheduled slot: {slot}; already refreshed: {already_refreshed}")
+          try:
+              updated_at = datetime.fromisoformat(data.get("updatedAt", ""))
+          except (TypeError, ValueError):
+              updated_at = None
+          already_refreshed = (
+              data.get("mode") == slot
+              and updated_at is not None
+              and updated_at >= slot_start
+          )
+          print(f"Scheduled slot: {slot}; snapshot updated at: {updated_at}; already refreshed: {already_refreshed}")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"skip={'true' if already_refreshed else 'false'}\n")
           PY
