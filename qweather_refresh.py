@@ -193,19 +193,19 @@ def main() -> int:
     old = load_json(DATA_FILE, {"updatedAt": None, "cities": {}})
     records: dict[str, Any] = old.get("cities", {})
     yesterday = (now.date() - timedelta(days=1)).isoformat()
-    # Preserve the previous day's saved forecast before today's refresh replaces it.
-    # This avoids calls to the paid Time Machine API on the free subscription.
+    # Preserve the previous day's complete forecast before today's refresh replaces it.
+    # The dashboard compares matching forecast dates without calling the paid Time Machine API.
     for city in cities:
         record = records.get(city["name"])
         if not isinstance(record, dict):
             continue
         previous_days = record.get("daily") or []
-        previous_day = next((day for day in previous_days if day.get("date") == yesterday), None)
-        saved = record.get("yesterdayForecast") or {}
-        if previous_day and saved.get("date") != yesterday:
-            record["yesterdayForecast"] = {
-                "date": yesterday,
-                "tempMax": previous_day.get("tempMax"),
+        captured_at = record.get("forecastUpdatedAt")
+        saved = record.get("previousForecast") or {}; captured_date = (captured_at or "")[:10]
+        if previous_days and captured_date == yesterday and saved.get("capturedDate") != yesterday:
+            record["previousForecast"] = {
+                "capturedDate": yesterday,
+                "daily": previous_days,
                 "capturedAt": record.get("forecastUpdatedAt"),
             }
     today_index = now.timetuple().tm_yday
