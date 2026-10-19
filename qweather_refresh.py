@@ -8,7 +8,7 @@ import gzip
 import os
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -89,6 +89,17 @@ def nested_number(obj: Any, key: str) -> float | None:
         return None
 
 
+def humidity_percent(raw: Any) -> float | None:
+    number = raw
+    try:
+        number = float(value(raw, "value", raw))
+    except (TypeError, ValueError):
+        return None
+    if 0 <= number <= 1:
+        number *= 100
+    return max(0, min(100, number))
+
+
 def get_current(api: QWeather, city: dict[str, Any]) -> dict[str, Any]:
     lat, lon = f"{city['lat']:.2f}", f"{city['lon']:.2f}"
     raw = api.get(f"/weather/v1/current/{lat}/{lon}", {"localTime": "true", "lang": "zh"})
@@ -98,11 +109,27 @@ def get_current(api: QWeather, city: dict[str, Any]) -> dict[str, Any]:
     temp = nested_number(raw, "temperature")
     if temp is None:
         temp = nested_number(current, "temp")
+    humidity = humidity_percent(value(raw, "humidity"))
+    if humidity is None:
+        humidity = humidity_percent(value(raw, "relativeHumidity"))
+    if humidity is None:
+        humidity = humidity_percent(value(current, "humidity"))
+    if humidity is None:
+        humidity = humidity_percent(value(current, "relativeHumidity"))
+    dew = nested_number(raw, "dewPoint")
+    if dew is None:
+        dew = nested_number(raw, "dew")
+    if dew is None:
+        dew = nested_number(current, "dewPoint")
+    if dew is None:
+        dew = nested_number(current, "dew")
     return {
         "temp": temp,
         "text": value(condition, "text") or value(current, "text") or "",
         "code": str(value(condition, "code") or value(current, "icon") or ""),
         "precip": nested_number(raw, "precipitation") if nested_number(raw, "precipitation") is not None else nested_number(current, "precip"),
+        "humidity": humidity,
+        "dew": dew,
         "obsTime": value(raw, "updateTime") or value(current, "obsTime") or "",
         "updatedAt": datetime.now(TZ).isoformat(timespec="seconds"),
     }
@@ -138,15 +165,33 @@ def normalize_days(raw: dict[str, Any]) -> list[dict[str, Any]]:
         amount = nested_number(precip, "amount")
         if amount is None:
             amount = (nested_number(precip_day, "amount") or 0) + (nested_number(precip_night, "amount") or 0)
+        humidity_values = [
+            humidity_percent(value(daypart, "humidity", value(daypart, "relativeHumidity"))),
+            humidity_percent(value(nightpart, "humidity", value(nightpart, "relativeHumidity"))),
+        ]
+        humidity_values = [number for number in humidity_values if number is not None]
+        humidity = sum(humidity_values) / len(humidity_values) if humidity_values else humidity_percent(value(row, "humidity"))
+        temp_max = nested_number(row, "temperatureMax") if nested_number(row, "temperatureMax") is not None else nested_number(row, "tempMax")
+        temp_min = nested_number(row, "temperatureMin") if nested_number(row, "temperatureMin") is not None else nested_number(row, "tempMin")
+        temp_avg = nested_number(row, "temperatureAvg")
+        if temp_avg is None and temp_max is not None and temp_min is not None:
+            temp_avg = (temp_max + temp_min) / 2
         date = str(value(row, "forecastStartTime") or value(row, "fxDate") or "")[:10]
         if not date:
             continue
+        rain_text = " ".join(
+            str(value(value(part, "condition", {}), "text") or "")
+            for part in (daypart, nightpart)
+        ).strip()
         result.append({
             "date": date,
             "text": value(condition, "text") or value(row, "text") or "",
+            "rainText": rain_text or value(condition, "text") or value(row, "text") or "",
             "code": str(value(condition, "code") or value(row, "icon") or ""),
-            "tempMax": nested_number(row, "temperatureMax") if nested_number(row, "temperatureMax") is not None else nested_number(row, "tempMax"),
-            "tempMin": nested_number(row, "temperatureMin") if nested_number(row, "temperatureMin") is not None else nested_number(row, "tempMin"),
+            "tempMax": temp_max,
+            "tempMin": temp_min,
+            "tempAvg": temp_avg,
+            "humidity": humidity,
             "probability": round(max(0, min(100, probability))),
             "amount": amount or 0,
         })
@@ -192,22 +237,11 @@ def main() -> int:
     morning = run_mode == "morning" if run_mode in {"morning", "evening"} else now.hour < 12
     old = load_json(DATA_FILE, {"updatedAt": None, "cities": {}})
     records: dict[str, Any] = old.get("cities", {})
-    yesterday = (now.date() - timedelta(days=1)).isoformat()
-    # Preserve the previous day's complete forecast before today's refresh replaces it.
-    # The dashboard compares matching forecast dates without calling the paid Time Machine API.
-    for city in cities:
-        record = records.get(city["name"])
-        if not isinstance(record, dict):
-            continue
-        previous_days = record.get("daily") or []
-        captured_at = record.get("forecastUpdatedAt")
-        saved = record.get("previousForecast") or {}; captured_date = (captured_at or "")[:10]
-        if previous_days and captured_date == yesterday and saved.get("capturedDate") != yesterday:
-            record["previousForecast"] = {
-                "capturedDate": yesterday,
-                "daily": previous_days,
-                "capturedAt": record.get("forecastUpdatedAt"),
-            }
+    # Cooling comparisons use today's forecast as the baseline in the dashboard;
+    # older forecast snapshots are no longer needed.
+    for record in records.values():
+        if isinstance(record, dict):
+            record.pop("previousForecast", None)
     today_index = now.timetuple().tm_yday
 
     # Rotate two disjoint groups of 28 cities. Each city still gets current weather
