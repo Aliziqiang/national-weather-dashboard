@@ -314,7 +314,7 @@
     }
     function selectCity(name){
       selected=name;const pack=weatherByName[name];if(!pack)return;const d=pack.daily||[],days=d.slice(0,7),now=pack.current||{},first=days[0]||{},sourceName=activeSource==='openmeteo'?'Open-Meteo':'和风天气';
-      $('heroCity').textContent=name+' · '+sourceName+'天气';$('heroTemp').textContent=fmt(now.temp);$('heroCondition').textContent=now.text||'暂无天气状态';$('heroRange').textContent='今日最高 '+fmt(first.tempMax)+' · 最低 '+fmt(first.tempMin)+' · 数据时间 '+(now.obsTime||'未知');$('heroHiLo').textContent=fmt(first.tempMax)+' / '+fmt(first.tempMin);$('heroRain').textContent=Math.round(Number(first.probability||0))+'%';
+      $('heroCity').textContent=name+' · '+sourceName;$('heroTemp').textContent=fmt(now.temp);$('heroCondition').textContent=now.text||'暂无天气状态';$('heroRange').textContent='今日最高 '+fmt(first.tempMax)+' · 最低 '+fmt(first.tempMin)+' · 数据时间 '+(now.obsTime||'未知');$('heroHiLo').textContent=fmt(first.tempMax)+' / '+fmt(first.tempMin);$('heroRain').textContent=Math.round(Number(first.probability||0))+'%';
       const minute=pack.minutely,minuteFresh=pack.minutelyUpdatedAt&&Date.now()-Date.parse(pack.minutelyUpdatedAt)<2*60*60*1000;$('heroMinute').textContent=activeSource==='openmeteo'?'Open-Meteo 未提供分钟级降水':minuteFresh&&minute?.summary?minute.summary:'未纳入本次重点城市';$('heroIcon').textContent=icon(now.text||first.text);
       $('forecastTitle').textContent='未来 '+days.length+' 天预报 · '+name;$('forecastRangeTag').textContent=days.length===7?'最高 / 最低气温趋势 · 降水概率':'接口返回 '+days.length+' 天 · 最高 / 最低气温趋势';
       const root=$('forecast');if(!days.length){root.innerHTML='<div class="empty">此城市暂时没有预报数据</div>';return}
