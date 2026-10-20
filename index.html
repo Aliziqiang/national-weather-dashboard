@@ -310,6 +310,7 @@
         }else cards.append(el)
       });
       if(!filtered.some(c=>c.name===selected)||!weatherByName[selected]){const first=filtered.find(c=>weatherByName[c.name]);if(first)selectCity(first.name)}
+      else if($('heroCity').textContent==='全国 · 城市概览'&&weatherByName[selected])selectCity(selected)
     }
     function selectCity(name){
       selected=name;const pack=weatherByName[name];if(!pack)return;const d=pack.daily||[],days=d.slice(0,7),now=pack.current||{},first=days[0]||{},sourceName=activeSource==='openmeteo'?'Open-Meteo':'和风天气';
