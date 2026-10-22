@@ -150,6 +150,9 @@
     .rain-stat span:not(.rain-stat-product){max-width:calc(100% - 112px)}
     .rain-stat-product{position:absolute;right:13px;top:50%;transform:translateY(-50%);display:inline-block!important;width:max-content;max-width:none!important;margin:0!important;padding:5px 9px;border:1px solid #287ba0;border-radius:999px;background:#102d41;color:#8edaff!important;font-size:11px!important;font-weight:650;line-height:1.2;white-space:nowrap}
     .rain-stat-product-warmfoot{border-color:#92703b;background:#352d20;color:#ffd27d!important}
+    .city.is-cold{border-color:#557ba1;background:linear-gradient(145deg,#172b40,#0c1926 75%)}
+    .heating-badge{background:#352d20!important;color:#ffd27d!important;border-color:#92703b!important}
+    .heating-region-note{margin:0 0 9px;color:var(--muted);font-size:10px;line-height:1.5}
     @media(max-width:560px){.rain-stat-product{right:8px;top:9px;transform:none;padding:3px 6px;font-size:9px!important}.rain-stat span:not(.rain-stat-product){max-width:100%;padding-top:13px}}
   </style>
 </head>
@@ -162,7 +165,7 @@
       <aside class="panel side"><div class="sectionHead"><h2>看雨提示</h2><span class="tag" id="sourceFeatureTag">逐天预报 + 临近降水</span></div><p class="hint" id="rainHint">全国城市按当前降雨、今日降雨概率排序。分钟级降水仅展示当次刷新选中的重点城市，预报未来 2 小时。</p><div class="trend"><div class="trendbox source-box"><span>数据源 · 点击切换</span><div class="source-switch"><button type="button" class="source-choice active" data-weather-source="qweather">和风天气</button><button type="button" class="source-choice" data-weather-source="openmeteo">Open-Meteo</button></div><small class="source-state" id="sourceState">当前：和风天气 · 自动同步</small></div><div class="trendbox"><span id="updateModeLabel">更新计划</span><b id="updatePlan">08:30 / 17:10</b><small id="updatePlanNote">北京时间 · GitHub Actions</small></div></div></aside>
     </section>
     <section class="panel forecast"><div class="sectionHead"><h2 id="forecastTitle">未来 7 天预报 · 北京</h2><div class="forecast-controls"><span class="tag" id="forecastRangeTag">最高 / 最低温度曲线 · 降水概率</span><div class="forecast-view-switch" role="group" aria-label="预报展示方式"><button type="button" data-forecast-view="trend" aria-pressed="true">趋势</button><button type="button" data-forecast-view="list" aria-pressed="false">列表</button></div></div></div><div class="forecast-visualization" id="forecast"><div class="loading">等待和风天气数据首次同步…</div></div></section>
-    <section class="panel cities"><div class="cityhead"><h2>全国城市天气 <span id="cityCount" class="tag">载入中</span><small>点击统计卡片筛选城市；当前正在下雨可查看今天 + 未来6天（共7天）的干衣机逐日需求评分，白天降雨小时、湿度、露点和连续不利晾晒天数分项展示；回南天风险独立预警；未来3天和未来6天有雨可能按滚动预报判断；降温筛选以今日预报最低温为基准，未来6天任一天最低温低 ≥5℃即计入（今天 + 未来6天，共7天）</small></h2><div class="tools"><select id="regionFilter" class="regionFilter" aria-label="按区域筛选"><option value="全部">全部地区</option><option value="华北">华北</option><option value="东北">东北</option><option value="华东">华东</option><option value="华中">华中</option><option value="华南">华南</option><option value="西南">西南</option><option value="西北">西北</option></select><select id="rainFilter" class="rainFilter" aria-label="天气条件筛选"><option value="all">全部城市（有雨优先）</option><option value="now">当前正在下雨</option><option value="3day">未来 3 天有雨可能</option><option value="6day">未来 6 天有雨可能</option><option value="cooling5">未来6天较今日最低温降温 ≥5℃</option></select><input id="search" class="search" placeholder="搜索城市" aria-label="搜索城市"></div></div><div class="rain-overview" aria-label="降雨与降温城市统计"><button class="rain-stat" data-rain-mode="now"><b id="rainNowCount">--</b><span>当前正在下雨 · 点击查看</span><span class="rain-stat-product rain-stat-product-dryer">干衣机预测</span></button><button class="rain-stat" data-rain-mode="3day"><b id="rain3dayCount">--</b><span>未来 3 天有雨可能 · 点击筛选</span></button><button class="rain-stat" data-rain-mode="6day"><b id="rain6dayCount">--</b><span>未来 6 天有雨可能 · 点击筛选</span></button><button class="rain-stat" data-rain-mode="cooling5"><b id="rainCoolingCount">--</b><span>未来6天降温 ≥5℃ · 点击筛选</span><span class="rain-stat-product rain-stat-product-warmfoot">暖脚板预测</span></button></div><div id="coolingRegionOverview" class="cooling-region-overview" aria-live="polite" hidden></div><div class="citygrid" id="cities"><div class="loading">正在载入城市与天气…</div></div></section>
+    <section class="panel cities"><div class="cityhead"><h2>全国城市天气 <span id="cityCount" class="tag">载入中</span><small>点击统计卡片筛选城市；当前正在下雨可查看今天 + 未来6天（共7天）的干衣机逐日需求评分，白天降雨小时、湿度、露点和连续不利晾晒天数分项展示；回南天风险独立预警；未来3天和未来6天有雨可能按滚动预报判断；低温筛选按当前实况温度低于13℃判断，并标记典型集中供暖区域</small></h2><div class="tools"><select id="regionFilter" class="regionFilter" aria-label="按区域筛选"><option value="全部">全部地区</option><option value="华北">华北</option><option value="东北">东北</option><option value="华东">华东</option><option value="华中">华中</option><option value="华南">华南</option><option value="西南">西南</option><option value="西北">西北</option></select><select id="rainFilter" class="rainFilter" aria-label="天气条件筛选"><option value="all">全部城市（有雨优先）</option><option value="now">当前正在下雨</option><option value="3day">未来 3 天有雨可能</option><option value="6day">未来 6 天有雨可能</option><option value="cold13">当前气温低于13℃</option></select><input id="search" class="search" placeholder="搜索城市" aria-label="搜索城市"></div></div><div class="rain-overview" aria-label="降雨与低温城市统计"><button class="rain-stat" data-rain-mode="now"><b id="rainNowCount">--</b><span>当前正在下雨 · 点击查看</span><span class="rain-stat-product rain-stat-product-dryer">干衣机预测</span></button><button class="rain-stat" data-rain-mode="3day"><b id="rain3dayCount">--</b><span>未来 3 天有雨可能 · 点击筛选</span></button><button class="rain-stat" data-rain-mode="6day"><b id="rain6dayCount">--</b><span>未来 6 天有雨可能 · 点击筛选</span></button><button class="rain-stat" data-rain-mode="cold13"><b id="cold13Count">--</b><span>全国当前气温低于13℃ · 点击筛选</span><span class="rain-stat-product rain-stat-product-warmfoot">供暖状态</span></button></div><div id="coolingRegionOverview" class="cooling-region-overview" aria-live="polite" hidden></div><div class="citygrid" id="cities"><div class="loading">正在载入城市与天气…</div></div></section>
     <footer class="footer"><span id="weatherAttribution">天气数据：和风天气 · 实况及逐天预报；分钟降水为未来 2 小时临近预报</span><span>坐标来自公开城市坐标表 · <a href="https://developer.qweather.com/attribution.html" target="_blank" rel="noreferrer">数据来源与许可</a></span></footer>
   </main>
   <script>
@@ -190,22 +193,14 @@
     const rainProb=(d,i)=>+(d?.[i]?.probability??0);
     const rainAmount=(d,i)=>+(d?.[i]?.amount??0);
     const shanghaiDate=(offset=0)=>{const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(Date.now()+offset*86400000));const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));return p.year+'-'+p.month+'-'+p.day};
-    const coolingChange=c=>{const pack=weatherByName[c.name]||{},days=pack.daily||[],today=days.find(day=>day.date===shanghaiDate());if(!today)return null;const baseline=numeric(today.tempMin),end=shanghaiDate(6),future=days.filter(day=>day.date>today.date&&day.date<=end).slice(0,6);if(baseline==null||future.length<6||future.some(day=>numeric(day.tempMin)==null))return null;const coldest=future.slice().sort((a,b)=>Number(a.tempMin)-Number(b.tempMin)||a.date.localeCompare(b.date))[0],delta=Math.max(0,baseline-Number(coldest.tempMin));return{day:coldest,delta,before:baseline,after:Number(coldest.tempMin),today,future,window:[today,...future]}};
-    const coolingDrop=c=>{const change=coolingChange(c);return change&&change.delta>=5?change:null};
-    const cooling5=c=>!!coolingDrop(c), COOLING_REGIONS=['华北','东北','华东','华中','华南','西南','西北'];
+    const WEATHER_REGIONS=['华北','东北','华东','华中','华南','西南','西北'];
+    const currentTemperature=c=>numeric((weatherByName[c.name]||{}).current?.temp);
+    const under13=c=>{const temp=currentTemperature(c);return temp!=null&&temp<13};
+    const heatingCoverage=c=>{const lat=numeric(c.lat);if(lat==null)return false;if(['华北','东北'].includes(c.region))return lat>=33;if(c.region==='西北')return lat>=34;if(['华东','华中'].includes(c.region))return lat>=34;return false};
     const rainPossibleWithin=(c,days)=>{const d=weatherByName[c.name]?.daily||[];return !currentRain(c)&&d.slice(0,days).some((x,i)=>isRainText(x.text)||rainProb(d,i)>=30||rainAmount(d,i)>=0.1)};
     const nextThreeRain=c=>rainPossibleWithin(c,3);
     const nextSixRain=c=>rainPossibleWithin(c,6);
     const demandLevel=score=>score<=30?{key:'weak',label:'弱需求',advice:'减少预算'}:score<=60?{key:'medium',label:'中等需求',advice:'维持基础预算'}:score<=80?{key:'strong',label:'较强需求',advice:'适当增加预算'}:{key:'high',label:'高需求信号',advice:'重点关注，逐步放量'};
-    function warmfootDemand(city){
-      const pack=weatherByName[city.name]||{},change=coolingChange(city);if(!change)return null;
-      const history=new Map((pack.lowTempHistory||[]).map(day=>[day.date,day]));
-      let streak=0;for(let offset=1;offset<=10;offset++){const day=history.get(shanghaiDate(-offset)),low=numeric(day?.tempMin);if(low==null||low>=12)break;streak++}
-      const scoredDays=change.window.map(day=>{const low=numeric(day.tempMin),humidity=normalizeHumidity(day.humidity);if(low==null||humidity==null)return null;streak=low<12?streak+1:0;const lowPoints=low>=15?0:low>=12?15:low>=9?30:low>=6?40:low>=3?50:55,streakPoints=streak===0?0:streak===1?3:streak===2?8:15,wetWeather=/(雨|雪)/.test((day.rainText||'')+' '+(day.text||''))||Number(day.amount||0)>0,wetPoints=low<15&&humidity>=75&&wetWeather?10:low<15&&humidity>=60&&humidity<75?5:0;return{...day,low,humidity,streak,lowPoints,streakPoints,wetPoints,base:lowPoints+streakPoints+wetPoints}});
-      if(scoredDays.some(day=>!day))return{score:null,change,days:scoredDays,reason:'缺少逐日湿度或最低温'};
-      const peakDay=scoredDays.reduce((best,day)=>day.base>best.base?day:best,scoredDays[0]),peakIndex=scoredDays.indexOf(peakDay),coolingPoints=change.delta<2?0:change.delta<4?5:change.delta<7?12:20,dailyScores=scoredDays.map((day,index)=>Math.min(100,day.base+(index===peakIndex?coolingPoints:0))),score=Math.max(...dailyScores),level=demandLevel(score);
-      return{score,level,change,days:scoredDays,peakDay,coolingPoints,maxBase:peakDay.base,dailyScores};
-    }
     const currentRain=c=>{const n=weatherByName[c.name]?.current;return !!n&&(isRainText(n.text)||Number(n.precip)>0)};
     const numeric=value=>value==null||value===''?null:(Number.isFinite(Number(value))?Number(value):null);
     function normalizeHumidity(value){const n=numeric(value);if(n==null)return null;return Math.max(0,Math.min(100,n<=1?n*100:n))}
@@ -234,24 +229,24 @@
     function renderRainRegionOverview(mode,activeRegion){
       const root=$('coolingRegionOverview');root.hidden=mode!=='now';if(root.hidden)return;
       root.innerHTML='<h3 class="cooling-region-title">七大区域 · 当前下雨城市干衣机需求</h3><p class="dryer-overview-note">按今天 + 接下来6天，共7天逐日计算；卡片展示今日均分和未来7天最高日均分，需求等级按最高日均分判断。点击地区筛选城市，查看每城7天分项；回南天风险单独提示，不加进评分。和风天气模式下，逐小时湿度、露点与降雨时长由 Open-Meteo 补充。</p><div class="cooling-region-grid"></div>';
-      const grid=root.querySelector('.cooling-region-grid'),groups=Object.fromEntries(COOLING_REGIONS.map(region=>[region,[]]));
+      const grid=root.querySelector('.cooling-region-grid'),groups=Object.fromEntries(WEATHER_REGIONS.map(region=>[region,[]]));
       all.filter(currentRain).forEach(city=>{if(groups[city.region])groups[city.region].push(dryerDemand(city))});
-      COOLING_REGIONS.forEach(region=>{
+      WEATHER_REGIONS.forEach(region=>{
         const values=groups[region],dailyAverages=Array.from({length:7},(_,offset)=>{const scores=values.map(value=>value.days[offset]?.score).filter(score=>score!=null);return scores.length?scores.reduce((sum,score)=>sum+score,0)/scores.length:null}),average=dailyAverages[0],peakIndex=dailyAverages.reduce((best,score,index)=>score!=null&&(best<0||score>dailyAverages[best])?index:best,-1),peak=peakIndex<0?null:dailyAverages[peakIndex],peakDate=peakIndex<0?'':values.map(value=>value.days[peakIndex]?.date).find(Boolean)||shanghaiDate(peakIndex),scored=values.filter(value=>value.score!=null),level=peak==null?null:demandLevel(peak),button=document.createElement('button');
         button.type='button';button.className='cooling-region-card'+(activeRegion===region?' active':'');button.setAttribute('aria-pressed',activeRegion===region?'true':'false');button.disabled=!values.length;
         button.innerHTML='<span class="cooling-region-name">'+region+'</span><div class="cooling-region-metrics"><div class="cooling-region-metric"><span class="cooling-region-label">今日平均需求分</span><strong class="cooling-region-average dryer-region-average">'+(average==null?'--':average.toFixed(1)+' 分')+'</strong></div><div class="cooling-region-metric"><span class="cooling-region-label">7天最高日均分</span><strong class="cooling-region-average dryer-region-average">'+(peak==null?'--':peak.toFixed(1)+' 分')+'</strong></div></div><span class="warmfoot-region-level '+(level?'warmfoot-'+level.key:'')+'">'+(level?level.label:'等待完整数据')+'</span><span class="cooling-region-meta">'+(peakDate?'峰值 '+peakDate.slice(5)+' · ':'')+values.length+' 个当前下雨城市 · '+scored.length+' 个今日可评分</span>';
         button.addEventListener('click',()=>{$('regionFilter').value=region;render()});grid.append(button)
       })
     }
-    function renderCoolingRegions(mode,activeRegion){
-      if(mode!=='cooling5')return renderRainRegionOverview(mode,activeRegion);
-      const root=$('coolingRegionOverview');root.hidden=false;root.innerHTML='<h3 class="cooling-region-title">七大区域 · 暖脚宝7天需求预测（今日 + 未来6天）</h3><p class="warmfoot-overview-note">按达标城市计算每日区域均分；等级按7天最高日均分显示，整体降温分只计入每城最高需求日一次。点击地区筛选城市。</p><div class="cooling-region-grid"></div>';
-      const grid=root.querySelector('.cooling-region-grid'),groups=Object.fromEntries(COOLING_REGIONS.map(region=>[region,[]]));
-      all.filter(cooling5).forEach(city=>{if(groups[city.region])groups[city.region].push({city,result:warmfootDemand(city)})});
-      COOLING_REGIONS.forEach(region=>{
-        const entries=groups[region],scored=entries.map(entry=>entry.result).filter(result=>result?.score!=null),dailyAverages=Array.from({length:7},(_,offset)=>{const scores=scored.map(result=>result.dailyScores?.[offset]).filter(score=>score!=null);return scores.length?scores.reduce((sum,score)=>sum+score,0)/scores.length:null}),todayAverage=dailyAverages[0],peakIndex=dailyAverages.reduce((best,score,index)=>score!=null&&(best<0||score>dailyAverages[best])?index:best,-1),peakAverage=peakIndex<0?null:dailyAverages[peakIndex],peakDate=peakIndex<0?'':scored.map(result=>result.days[peakIndex]?.date).find(Boolean)||shanghaiDate(peakIndex),level=peakAverage==null?null:demandLevel(peakAverage),button=document.createElement('button');
+    function renderColdRegionOverview(mode,activeRegion){
+      if(mode!=='cold13')return renderRainRegionOverview(mode,activeRegion);
+      const root=$('coolingRegionOverview');root.hidden=false;root.innerHTML='<h3 class="cooling-region-title">七大区域 · 当前气温低于13℃城市</h3><p class="heating-region-note">按当前实况气温筛选；“典型集中供暖区”为城市级地域估算，不代表具体小区已开暖，开停暖以当地公告为准。</p><div class="cooling-region-grid"></div>';
+      const grid=root.querySelector('.cooling-region-grid'),groups=Object.fromEntries(WEATHER_REGIONS.map(region=>[region,[]]));
+      all.filter(under13).forEach(city=>{if(groups[city.region])groups[city.region].push(city)});
+      WEATHER_REGIONS.forEach(region=>{
+        const entries=groups[region],heated=entries.filter(heatingCoverage).length,button=document.createElement('button');
         button.type='button';button.className='cooling-region-card'+(activeRegion===region?' active':'');button.setAttribute('aria-pressed',activeRegion===region?'true':'false');button.disabled=!entries.length;
-        button.innerHTML='<span class="cooling-region-name">'+region+'</span><div class="cooling-region-metrics"><div class="cooling-region-metric"><span class="cooling-region-label">今日平均需求分</span><strong class="cooling-region-average warmfoot-average">'+(todayAverage==null?'--':todayAverage.toFixed(1)+' 分')+'</strong></div><div class="cooling-region-metric"><span class="cooling-region-label">7天最高日均分</span><strong class="cooling-region-average warmfoot-average">'+(peakAverage==null?'--':peakAverage.toFixed(1)+' 分')+'</strong></div></div><span class="warmfoot-region-level '+(level?'warmfoot-'+level.key:'')+'">'+(level?level.label:'等待完整数据')+'</span><span class="cooling-region-meta">'+(peakDate?'峰值 '+peakDate.slice(5)+' · ':'')+entries.length+' 个达标城市 · '+scored.length+' 个可评分</span>';
+        button.innerHTML='<span class="cooling-region-name">'+region+'</span><div class="cooling-region-metrics"><div class="cooling-region-metric"><span class="cooling-region-label">13℃以下城市</span><strong class="cooling-region-average">'+entries.length+' 个</strong></div><div class="cooling-region-metric"><span class="cooling-region-label">典型供暖覆盖</span><strong class="cooling-region-forecast">'+heated+' 个</strong></div></div><span class="cooling-region-meta">'+entries.length+' 个低温城市 · '+heated+' 个典型集中供暖区</span>';
         button.addEventListener('click',()=>{$('regionFilter').value=region;render()});grid.append(button)
       })
     }
@@ -261,34 +256,34 @@
       $('rainNowCount').textContent=scopedLoaded.filter(currentRain).length;
       $('rain3dayCount').textContent=scopedLoaded.filter(nextThreeRain).length;
       $('rain6dayCount').textContent=scopedLoaded.filter(nextSixRain).length;
-      $('rainCoolingCount').textContent=scopedLoaded.filter(cooling5).length;
-      renderCoolingRegions(mode,region);
+      $('cold13Count').textContent=scopedLoaded.filter(under13).length;
+      renderColdRegionOverview(mode,region);
       document.querySelectorAll('.rain-stat').forEach(b=>{
         const label=region==='全部'?'':region+' · ';
-        const labels={now:'当前正在下雨 · 点击查看','3day':'未来 3 天有雨可能 · 点击筛选','6day':'未来 6 天有雨可能 · 点击筛选',cooling5:'未来6天降温 ≥5℃ · 点击筛选'};
+        const labels={now:'当前正在下雨 · 点击查看','3day':'未来 3 天有雨可能 · 点击筛选','6day':'未来 6 天有雨可能 · 点击筛选',cold13:'全国当前气温低于13℃ · 点击筛选'};
         b.querySelector('span').textContent=label+labels[b.dataset.rainMode];b.classList.toggle('active',b.dataset.rainMode===mode)
       });
-      let filtered=all.filter(c=>(region==='全部'||c.region===region)&&(!term||c.name.includes(term))&&(mode==='all'||(mode==='now'?currentRain(c):mode==='3day'?nextThreeRain(c):mode==='6day'?nextSixRain(c):cooling5(c))));
+      let filtered=all.filter(c=>(region==='全部'||c.region===region)&&(!term||c.name.includes(term))&&(mode==='all'||(mode==='now'?currentRain(c):mode==='3day'?nextThreeRain(c):mode==='6day'?nextSixRain(c):under13(c))));
       if(mode==='all')filtered.sort((a,b)=>{const score=c=>currentRain(c)?3:nextThreeRain(c)?2:nextSixRain(c)?1:0;return score(b)-score(a)||a.name.localeCompare(b.name,'zh-CN')});
-      else if(mode==='cooling5')filtered.sort((a,b)=>(coolingDrop(b)?.delta||0)-(coolingDrop(a)?.delta||0));
+      else if(mode==='cold13')filtered.sort((a,b)=>(currentTemperature(a)??Infinity)-(currentTemperature(b)??Infinity)||(Number(heatingCoverage(b))-Number(heatingCoverage(a))));
       else if(mode==='now')filtered.sort((a,b)=>(dryerDemand(b).score??-1)-(dryerDemand(a).score??-1));
       else filtered.sort((a,b)=>{const days=mode==='6day'?6:3;const risk=c=>Math.max(...(weatherByName[c.name]?.daily||[]).slice(0,days).map(x=>Number(x.probability)||0),0);return risk(b)-risk(a)});
       if(!filtered.length){cards.innerHTML='<div class="empty">当前筛选条件下没有匹配城市</div>';return}
       cards.innerHTML='';
       filtered.forEach(c=>{
-        const pack=weatherByName[c.name],d=pack?.daily||[],now=pack?.current,p=rainProb(d,0),amount=rainAmount(d,0),raining=currentRain(c),risk=nextThreeRain(c)||nextSixRain(c),cooling=mode==='cooling5'?coolingDrop(c):null,dryer=mode==='now'?dryerDemand(c):null,warmfoot=mode==='cooling5'?warmfootDemand(c):null;
-        const wrapped=mode==='now'||mode==='cooling5',el=document.createElement('button');el.className=wrapped?'city':'city'+(raining?' is-raining':risk?' has-rain-risk':'');el.style.cssText='text-align:left;color:inherit;cursor:pointer;font:inherit';
+        const pack=weatherByName[c.name],d=pack?.daily||[],now=pack?.current,amount=rainAmount(d,0),raining=currentRain(c),risk=nextThreeRain(c)||nextSixRain(c),dryer=mode==='now'?dryerDemand(c):null;
+        const wrapped=mode==='now'||mode==='cold13',el=document.createElement('button');el.className='city'+(mode==='cold13'?' is-cold':raining?' is-raining':risk?' has-rain-risk':'');el.style.cssText='text-align:left;color:inherit;cursor:pointer;font:inherit';
         const entry=wrapped?document.createElement('div'):null;if(entry)entry.className='city-entry'+(raining?' is-raining':risk?' has-rain-risk':'');
         const top=document.createElement('div');top.className='citytop';const left=document.createElement('div');left.className='cityleft';
         const name=document.createElement('span');name.className='cityname';name.textContent=c.name;const badge=document.createElement('span');badge.className='cityregion';badge.dataset.region=c.region;badge.textContent=c.region;left.append(name,badge);
         const mark=document.createElement('span');mark.className='citywx';mark.textContent=now?icon(now.text):d.length?icon(d[0].text):'·';top.append(left,mark);
-        const bottom=document.createElement('div');bottom.className='citybottom';const temperature=document.createElement('span');temperature.className='citytemp';temperature.textContent=mode==='cooling5'?'最低 '+fmt(cooling.after):now?fmt(now.temp):d.length?fmt(d[0].tempMax):'--°';
+        const bottom=document.createElement('div');bottom.className='citybottom';const temperature=document.createElement('span');temperature.className='citytemp';temperature.textContent=mode==='cold13'?'当前 '+fmt(currentTemperature(c)):now?fmt(now.temp):d.length?fmt(d[0].tempMax):'--°';
         const meta=document.createElement('span');meta.className='citymeta';const rain=document.createElement('span');
         const rainWindow=mode==='6day'?6:3,windowRainDays=d.slice(0,rainWindow),windowRainChance=Math.max(...windowRainDays.map(x=>Number(x.probability)||0),0),windowRainDay=windowRainDays.find((x,i)=>isRainText(x.text)||rainProb(windowRainDays,i)>=30||rainAmount(windowRainDays,i)>=0.1);
-        rain.textContent=mode==='cooling5'?'需求指数 '+(warmfoot?.score==null?'待完整数据':warmfoot.score+' 分'):raining?'正在下雨':risk?(windowRainDay?.date||'未来几天')+'有雨可能':(mode==='6day'?'未来6天':'未来3天')+'无明显降雨';
-        const rainDetail=document.createElement('small');rainDetail.textContent=mode==='cooling5'?'最大降温 '+fmt(cooling.delta)+' · '+cooling.day.date:mode==='now'?'今日RH '+(dryer?.today?.humidity==null?'--':Math.round(dryer.today.humidity)+'%')+' · 白天雨 '+(dryer?.today?.rainHours==null?'--':dryer.today.rainHours+'h'):'今日预计 '+amount.toFixed(1)+' mm · '+(mode==='6day'?'未来6':'未来3')+'天最高概率 '+windowRainChance+'%';
+        rain.textContent=mode==='cold13'?'当前气温低于13℃':raining?'正在下雨':risk?(windowRainDay?.date||'未来几天')+'有雨可能':(mode==='6day'?'未来6天':'未来3天')+'无明显降雨';
+        const rainDetail=document.createElement('small');rainDetail.textContent=mode==='cold13'?'实况 '+(now?.obsTime||'按最新同步数据')+' · '+(heatingCoverage(c)?'典型集中供暖区':'非典型集中供暖区'):mode==='now'?'今日RH '+(dryer?.today?.humidity==null?'--':Math.round(dryer.today.humidity)+'%')+' · 白天雨 '+(dryer?.today?.rainHours==null?'--':dryer.today.rainHours+'h'):'今日预计 '+amount.toFixed(1)+' mm · '+(mode==='6day'?'未来6':'未来3')+'天最高概率 '+windowRainChance+'%';
         meta.append(rain,rainDetail);const condition=document.createElement('div');condition.style.cssText='font-size:10px;color:var(--muted);text-align:right;margin-top:3px';condition.textContent=now?now.text:d.length?d[0].text:'';bottom.append(temperature,meta);el.append(top);
-        const status=document.createElement('div');status.className=mode==='cooling5'?'rainbadge warmfoot-badge '+(warmfoot?.level?'warmfoot-'+warmfoot.level.key:''): 'rainbadge'+(!raining&&risk?' risk':'');status.textContent=mode==='cooling5'?'🧦 '+(warmfoot?.level?.label||'需求待计算')+(warmfoot?.score==null?'':' · '+warmfoot.score+' / 100'):mode==='now'?'🧺 今日干衣机需求 '+(dryer?.score==null?'待完整数据':dryer.score+' 分 · '+dryer.today.level.label)+(dryer?.riskDays?.length?' · 回南风险 '+dryer.riskDays.length+'天':'')+' · 当前下雨':raining?'🌧 当前下雨':risk?'🌧 '+(windowRainDay?.date||'未来几天')+'有雨可能':'🌤 '+(mode==='6day'?'未来6天':'未来3天')+'无明显降雨';status.style.marginTop='9px';el.append(status,bottom,condition);
+        const status=document.createElement('div');status.className=mode==='cold13'?'rainbadge heating-badge':'rainbadge'+(!raining&&risk?' risk':'');status.textContent=mode==='cold13'?(heatingCoverage(c)?'🔥 典型集中供暖区':'非典型集中供暖区'):mode==='now'?'🧺 今日干衣机需求 '+(dryer?.score==null?'待完整数据':dryer.score+' 分 · '+dryer.today.level.label)+(dryer?.riskDays?.length?' · 回南风险 '+dryer.riskDays.length+'天':'')+' · 当前下雨':raining?'🌧 当前下雨':risk?'🌧 '+(windowRainDay?.date||'未来几天')+'有雨可能':'🌤 '+(mode==='6day'?'未来6天':'未来3天')+'无明显降雨';status.style.marginTop='9px';el.append(status,bottom,condition);
         el.disabled=!d.length;el.onclick=()=>selectCity(c.name);
         if(mode==='now'){
           const dryerDetail=document.createElement('div');dryerDetail.className='dryer-city-detail';dryerDetail.id='dryer-detail-'+cards.children.length;dryerDetail.hidden=true;
@@ -299,14 +294,8 @@
           const toggle=document.createElement('button');toggle.type='button';toggle.className='dryer-detail-toggle';toggle.textContent='查看7天评分明细';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',dryerDetail.id);toggle.setAttribute('aria-label','查看 '+c.name+' 的未来7天干衣机评分明细');
           toggle.addEventListener('click',()=>{const expand=dryerDetail.hidden;dryerDetail.hidden=!expand;toggle.textContent=expand?'收起7天明细':'查看7天评分明细';toggle.setAttribute('aria-expanded',String(expand))});
           entry.append(el,toggle,dryerDetail);cards.append(entry)
-        }else if(mode==='cooling5'){
-          const detail=document.createElement('div');detail.className='warmfoot-city-detail';detail.id='warmfoot-detail-'+cards.children.length;detail.hidden=true;
-          const dayRows=(warmfoot?.days||[]).map(day=>day?'<div class="warmfoot-day" title="最低温 '+day.lowPoints+' 分 + 连续低温 '+day.streakPoints+' 分 + 湿冷 '+day.wetPoints+' 分"><span>'+day.date.slice(5)+'</span><strong>'+fmt(day.low)+'</strong><small>基础 '+day.base+' 分</small><em>连低 '+day.streak+' 天 · RH '+Math.round(day.humidity)+'%</em><i>'+day.lowPoints+' + '+day.streakPoints+' + '+day.wetPoints+'</i></div>':'<div class="warmfoot-day missing">数据缺失</div>').join('');
-          const resultLine=warmfoot?.score==null?'综合指数暂不可计算：'+(warmfoot?.reason||'今天及未来6天预报数据不完整'):'7天最高单日基础分 '+warmfoot.maxBase+' + 整体降温分 '+warmfoot.coolingPoints+' = <strong>'+warmfoot.score+' 分</strong> · '+warmfoot.level.label+' · 建议：'+warmfoot.level.advice;
-          detail.innerHTML='<div class="warmfoot-detail-heading"><strong>今天 + 未来6天（共7天）每日最低温与基础分</strong><span>今日最低 '+fmt(cooling.before)+' → '+cooling.day.date+' 最低 '+fmt(cooling.after)+'（未来6天降温 '+fmt(cooling.delta)+'，+'+ (warmfoot?.coolingPoints??'--') +' 分）</span></div><div class="warmfoot-days">'+dayRows+'</div><div class="warmfoot-total">'+resultLine+'</div>';
-          const toggle=document.createElement('button');toggle.type='button';toggle.className='dryer-detail-toggle warmfoot-detail-toggle';toggle.textContent='查看7天预测明细';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',detail.id);toggle.setAttribute('aria-label','查看 '+c.name+' 今天及未来6天的暖脚宝预测明细');
-          toggle.addEventListener('click',()=>{const expand=detail.hidden;detail.hidden=!expand;toggle.textContent=expand?'收起7天明细':'查看7天预测明细';toggle.setAttribute('aria-expanded',String(expand))});
-          entry.append(el,toggle,detail);cards.append(entry)
+        }else if(mode==='cold13'){
+          entry.append(el);cards.append(entry)
         }else cards.append(el)
       });
       if(!filtered.some(c=>c.name===selected)||!weatherByName[selected]){const first=filtered.find(c=>weatherByName[c.name]);if(first)selectCity(first.name)}
