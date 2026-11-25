@@ -1,13 +1,10 @@
 name: Refresh QWeather data and publish Pages
 on:
   schedule:
-    # Primary refresh and retries. All times are Asia/Shanghai (UTC+8).
-    # Later jobs only make weather requests if an earlier attempt did not refresh this slot.
-    - cron: "30,45 0 * * *" # 08:30, 08:45
-    - cron: "15,30,45 1 * * *" # 09:15, 09:30, 09:45
-    - cron: "15,30,45 2 * * *" # 10:15, 10:30, 10:45
-    - cron: "10,25,40,55 9 * * *" # 17:10, 17:25, 17:40, 17:55
-    - cron: "10,25,40 10 * * *" # 18:10, 18:25, 18:40
+    # One daily refresh with off-peak retries. Times are Asia/Shanghai (UTC+8).
+    # Retry jobs skip once today's morning snapshot has been saved.
+    - cron: "10,25,40,55 20 * * *" # 04:10, 04:25, 04:40, 04:55
+    - cron: "10,25,40,55 21 * * *" # 05:10, 05:25, 05:40, 05:55
   workflow_dispatch:
     inputs:
       publish_only:
@@ -35,7 +32,7 @@ jobs:
       - name: Check out site
         uses: actions/checkout@v7
 
-      - name: Skip a scheduled retry if this slot already refreshed
+      - name: Ignore old schedules and skip completed retries
         id: retry_guard
         if: ${{ github.event_name == 'schedule' }}
         run: |
@@ -46,38 +43,37 @@ jobs:
           from pathlib import Path
           from zoneinfo import ZoneInfo
 
-          morning_schedules = {
-              "30,45 0 * * *",
-              "15,30,45 1 * * *",
-              "15,30,45 2 * * *",
+          daily_schedules = {
+              "10,25,40,55 20 * * *",
+              "10,25,40,55 21 * * *",
           }
           schedule = os.environ["SCHEDULE"]
-          slot = "morning" if schedule in morning_schedules else "evening"
-          data = json.loads(Path("weather-data.json").read_text(encoding="utf-8"))
-          tz = ZoneInfo("Asia/Shanghai")
-          now = datetime.now(tz)
-          slot_start = datetime.combine(
-              now.date(),
-              time(8, 30) if slot == "morning" else time(17, 10),
-              tzinfo=tz,
-          )
-          try:
-              updated_at = datetime.fromisoformat(data.get("updatedAt", ""))
-              if updated_at.tzinfo is None:
-                  updated_at = updated_at.replace(tzinfo=tz)
-          except (TypeError, ValueError):
-              updated_at = None
-          already_refreshed = (
-              data.get("mode") == slot
-              and updated_at is not None
-              and updated_at.astimezone(tz) >= slot_start
-          )
-          print(
-              f"Scheduled slot: {slot}; snapshot updated at: {updated_at}; "
-              f"already refreshed: {already_refreshed}"
-          )
+          skip = schedule not in daily_schedules
+          if skip:
+              print(f"Skipping obsolete scheduled event: {schedule}")
+          else:
+              data = json.loads(Path("weather-data.json").read_text(encoding="utf-8"))
+              tz = ZoneInfo("Asia/Shanghai")
+              now = datetime.now(tz)
+              slot_start = datetime.combine(now.date(), time(4, 10), tzinfo=tz)
+              try:
+                  updated_at = datetime.fromisoformat(data.get("updatedAt", ""))
+                  if updated_at.tzinfo is None:
+                      updated_at = updated_at.replace(tzinfo=tz)
+              except (TypeError, ValueError):
+                  updated_at = None
+              already_refreshed = (
+                  data.get("mode") == "morning"
+                  and updated_at is not None
+                  and updated_at.astimezone(tz) >= slot_start
+              )
+              skip = already_refreshed
+              print(
+                  f"Daily morning slot; snapshot updated at: {updated_at}; "
+                  f"already refreshed: {already_refreshed}"
+              )
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write(f"skip={'true' if already_refreshed else 'false'}\n")
+              output.write(f"skip={'true' if skip else 'false'}\n")
           PY
         env:
           SCHEDULE: ${{ github.event.schedule }}
@@ -93,7 +89,7 @@ jobs:
         env:
           QWEATHER_API_HOST: ${{ vars.QWEATHER_API_HOST }}
           QWEATHER_API_KEY: ${{ secrets.QWEATHER_API_KEY }}
-          QWEATHER_RUN_MODE: ${{ github.event_name == 'schedule' && (github.event.schedule == '30,45 0 * * *' || github.event.schedule == '15,30,45 1 * * *' || github.event.schedule == '15,30,45 2 * * *') && 'morning' || github.event_name == 'schedule' && 'evening' || '' }}
+          QWEATHER_RUN_MODE: ${{ github.event_name == 'schedule' && (github.event.schedule == '10,25,40,55 20 * * *' || github.event.schedule == '10,25,40,55 21 * * *') && 'morning' || '' }}
         run: python qweather_refresh.py
 
       - name: Persist latest snapshot for the next scheduled run
